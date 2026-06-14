@@ -15,8 +15,11 @@ export default function PhysicsLab() {
       Object.entries(experiment.variables).forEach(([key, def]) => {
         defaults[key] = def.default
       })
-      setLocalVars(defaults)
-      dispatch({ type: 'SET_VARIABLES', payload: defaults })
+      // Merge: use any custom variables from state (e.g., from AI-generated custom experiment)
+      // over the defaults, so AI-suggested values are preserved
+      const merged = { ...defaults, ...state.variables }
+      setLocalVars(merged)
+      dispatch({ type: 'SET_VARIABLES', payload: merged })
       dispatch({ type: 'INCREMENT_EXPERIMENTS' })
     }
   }, [experiment?.id])

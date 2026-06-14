@@ -1,10 +1,33 @@
 import { GoogleGenAI } from '@google/genai'
 
 const MODEL_NAME = 'gemini-2.5-flash'
+const MAX_RETRIES = 3
+const BASE_DELAY_MS = 2000
 
 function getClient() {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''
   return new GoogleGenAI({ apiKey })
+}
+
+async function withRetry(fn, retries = MAX_RETRIES) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      const is429 = error?.status === 429 ||
+        error?.message?.includes('429') ||
+        error?.message?.includes('RESOURCE_EXHAUSTED') ||
+        error?.message?.includes('quota')
+
+      if (is429 && attempt < retries) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt)
+        console.warn(`Rate limited (attempt ${attempt + 1}/${retries + 1}). Retrying in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      throw error
+    }
+  }
 }
 
 function isApiKeySet() {
@@ -44,28 +67,33 @@ Tone: Enthusiastic but precise. Like a great science teacher, not a textbook.
 Format: Short paragraphs, no bullet lists unless listing steps. Max 150 words per response unless a detailed explanation is truly needed.`
 
   try {
-    const ai = getClient()
+    return await withRetry(async () => {
+      const ai = getClient()
 
-    // Build history from conversation (exclude last user message)
-    const history = conversationHistory.slice(-10).map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
-    }))
+      // Build history from conversation (exclude last user message)
+      const history = conversationHistory.slice(-10).map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }],
+      }))
 
-    const chat = ai.chats.create({
-      model: MODEL_NAME,
-      config: {
-        systemInstruction: systemPrompt,
-        maxOutputTokens: 1000,
-        temperature: 0.7,
-      },
-      history,
+      const chat = ai.chats.create({
+        model: MODEL_NAME,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: 1000,
+          temperature: 0.7,
+        },
+        history,
+      })
+
+      const response = await chat.sendMessage({ message: userMessage })
+      return response.text || "I couldn't generate a response. Try again!"
     })
-
-    const response = await chat.sendMessage({ message: userMessage })
-    return response.text || "I couldn't generate a response. Try again!"
   } catch (error) {
     console.error('AI Partner error:', error)
+    if (error?.message?.includes('429') || error?.message?.includes('quota')) {
+      return "⏳ I've hit my rate limit — too many requests in a short time. Please wait a minute and try again!"
+    }
     return "I'm having trouble connecting right now. Please check your API key and try again!"
   }
 }
@@ -131,21 +159,26 @@ Return a JSON object with these fields:
 Return ONLY the JSON object, no markdown backticks.`
 
   try {
-    const ai = getClient()
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        systemInstruction: 'You are a helpful lab report generator.',
-        responseMimeType: 'application/json',
-        maxOutputTokens: 1000,
-      },
-    })
+    return await withRetry(async () => {
+      const ai = getClient()
+      const response = await ai.models.generateContent({
+        model: MODEL_NAME,
+        contents: prompt,
+        config: {
+          systemInstruction: 'You are a helpful lab report generator.',
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1000,
+        },
+      })
 
-    return safeJsonParse(response.text)
+      return safeJsonParse(response.text)
+    })
   } catch (error) {
     console.error('Lab report error:', error)
-    return null
+    if (error?.message?.includes('429') || error?.message?.includes('quota')) {
+      throw new Error('RATE_LIMITED')
+    }
+    throw new Error('REPORT_FAILED')
   }
 }
 
@@ -174,20 +207,25 @@ Map this to a simulation configuration. Return a JSON object:
 Return ONLY the JSON object.`
 
   try {
-    const ai = getClient()
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        systemInstruction: 'You are a helpful science experiment mapper.',
-        responseMimeType: 'application/json',
-        maxOutputTokens: 1000,
-      },
-    })
+    return await withRetry(async () => {
+      const ai = getClient()
+      const response = await ai.models.generateContent({
+        model: MODEL_NAME,
+        contents: prompt,
+        config: {
+          systemInstruction: 'You are a helpful science experiment mapper.',
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1000,
+        },
+      })
 
-    return safeJsonParse(response.text)
+      return safeJsonParse(response.text)
+    })
   } catch (error) {
     console.error('Text-to-experiment error:', error)
-    return null
+    if (error?.message?.includes('429') || error?.message?.includes('quota')) {
+      throw new Error('RATE_LIMITED')
+    }
+    throw new Error('EXPERIMENT_FAILED')
   }
 }

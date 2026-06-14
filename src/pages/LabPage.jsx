@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { FlaskConical, Atom, Microscope, Sparkles, FileText, Clock, Beaker, Plus } from 'lucide-react'
 import { useLab } from '../context/LabContext'
 import SimWorkspace from '../components/SimWorkspace'
@@ -43,6 +43,13 @@ export default function LabPage() {
   const [generatingReport, setGeneratingReport] = useState(false)
   const [customInput, setCustomInput] = useState('')
   const [showCustom, setShowCustom] = useState(false)
+  const [generatingCustom, setGeneratingCustom] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  const showToast = useCallback((message, type = 'error') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 5000)
+  }, [])
 
   // Handle ?module= query param
   useEffect(() => {
@@ -63,9 +70,18 @@ export default function LabPage() {
         conversationHistory: state.conversationHistory,
         variables: state.variables,
       })
-      if (result) setReport(result)
+      if (result) {
+        setReport(result)
+      } else {
+        showToast('Report generation returned empty. Try running an experiment first.')
+      }
     } catch (err) {
       console.error('Report generation failed:', err)
+      if (err.message === 'RATE_LIMITED') {
+        showToast('⏳ Rate limit reached — please wait a minute and try again.')
+      } else {
+        showToast('Failed to generate report. Please try again.')
+      }
     } finally {
       setGeneratingReport(false)
     }
@@ -73,6 +89,7 @@ export default function LabPage() {
 
   async function handleCustomExperiment() {
     if (!customInput.trim() || !state.activeLab) return
+    setGeneratingCustom(true)
     try {
       const result = await textToExperiment({
         description: customInput.trim(),
@@ -89,9 +106,19 @@ export default function LabPage() {
         })
         setCustomInput('')
         setShowCustom(false)
+        showToast(`✅ Custom experiment "${result.name}" loaded!`, 'success')
+      } else {
+        showToast('Could not map your experiment. Try a different description.')
       }
     } catch (err) {
       console.error('Custom experiment failed:', err)
+      if (err.message === 'RATE_LIMITED') {
+        showToast('⏳ Rate limit reached — please wait a minute and try again.')
+      } else {
+        showToast('Failed to generate experiment. Please try again.')
+      }
+    } finally {
+      setGeneratingCustom(false)
     }
   }
 
@@ -249,10 +276,11 @@ export default function LabPage() {
                 />
                 <button
                   onClick={handleCustomExperiment}
+                  disabled={generatingCustom || !customInput.trim()}
                   className="btn-fill"
-                  style={{ width: '100%', marginTop: '6px', fontSize: '12px', padding: '6px' }}
+                  style={{ width: '100%', marginTop: '6px', fontSize: '12px', padding: '6px', opacity: generatingCustom ? 0.7 : 1 }}
                 >
-                  Generate →
+                  {generatingCustom ? 'Generating…' : 'Generate →'}
                 </button>
               </div>
             )}
@@ -341,6 +369,39 @@ export default function LabPage() {
             report={report}
             onClose={() => setReport(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key={toast.message}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setToast(null)}
+            style={{
+              position: 'fixed',
+              bottom: '80px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: toast.type === 'success' ? '#0e5c30' : '#7a2020',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: 500,
+              zIndex: 400,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+              cursor: 'pointer',
+              maxWidth: '500px',
+              textAlign: 'center',
+            }}
+          >
+            {toast.message}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
