@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #4A6CF7;
+  --brand-dark: #3A5AE0;
+  --bg: #f9f9f7;
+  --surface: #ffffff;
+  --border: #e8e8e4;
+  --text-primary: #111111;
+  --text-muted: #444444;
+  --text-hint: #666666;
+  --text-light: #999999;
+
+  --chem-bg: #fff3cd;
+  --chem-text: #7a5500;
+  --phys-bg: #dce8ff;
+  --phys-text: #1a3a8f;
+  --bio-bg: #d4f7e0;
+  --bio-text: #0e5c30;
+  --ai-bg: #ede0ff;
+  --ai-text: #4a0099;
+
+  --shape-green: #c8f5c8;
+  --shape-peach: #ffd6c0;
+  --shape-blue: #d4e0ff;
+  --badge-bg: #FFF9C4;
+  --badge-border: #e8d800;
+  --badge-text: #5a4e00;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Button base styles */
+.btn-outline {
+  border: 1.5px solid #111;
+  border-radius: 99px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: #111;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.btn-outline:hover {
+  background: #111;
+  color: #fff;
+}
+
+.btn-fill {
+  background: var(--brand);
+  color: white;
+  border: none;
+  border-radius: 99px;
+  padding: 9px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.btn-fill:hover {
+  background: var(--brand-dark);
+}
+
+.btn-fill:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
+
+/* Print styles for lab report */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .lab-report-print,
+  .lab-report-print * {
+    visibility: visible;
+  }
+  .lab-report-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 40px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #e0e0e0;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--brand);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* Canvas container */
+.sim-canvas-container {
+  position: relative;
+  width: 100%;
+  min-height: 420px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sim-canvas-container canvas {
+  display: block;
+}
